@@ -60,39 +60,47 @@ Docker: dptechnology/unimol:latest-pytorch1.11.0-cuda11.3
 GPU with CUDA support
 ```
 
-### RASPA
+### RASPA + PyEQEq
 ```
 RASPA2
-Python 3.10+
+Python 3.10 (required for pyeqeq compatibility)
+Ubuntu 20.04 (required for pyeqeq compatibility)
+pyeqeq
 ```
 
 ## Usage
 
-### 1. Filter QMOF
+### 1. Filter QMOF database
+Filter 20,372 MOFs by pore limiting diameter (PLD > 3.3 Å) → 5,419 MOFs suitable for CO₂.
 ```bash
 cd ML_Models/MOFs
 python filterCO2_qmof.py
 ```
 
-### 2. Run ALIGNN inference
+### 2. Run ALIGNN inference (before finetuning)
+Predict CO₂ uptake for all 5,419 MOFs at 5 pressures (0.01–2.5 bar, 298 K).
 ```bash
 cd ML_Models/ALIGNN
 python batch_alignn.py
 ```
 
-### 3. Select top-10 MOFs
+### 3. Select MOFs for finetuning and validation
+Select top-10 MOFs by predicted uptake at 2.5 bar (train set), then 10 random MOFs excluding top-10 (validation set).
 ```bash
 cd ML_Models/MOFs
 python select_10MOFs.py
+python select_random_10.py
 ```
 
 ### 4. Run GCMC in RASPA
+Compute GCMC isotherms for all 20 selected MOFs (10 train + 10 valid) at 298 K, 0.01–10 bar.
 ```bash
 cd GCMC
 python main_experiment.py
 ```
 
 ### 5. Finetune ALIGNN
+Finetune on 10 train MOFs with GCMC data, validate on 10 random MOFs, then run inference on all 5,419 MOFs and compute metrics.
 ```bash
 cd ML_Models/ALIGNN
 python prepare_finetune_data.py
@@ -102,6 +110,7 @@ python compute_metrics_alignn_v2.py
 ```
 
 ### 6. Finetune Uni-MOF (in Docker)
+Same pipeline as ALIGNN but runs inside Docker container with GPU support.
 ```bash
 docker run --rm -it --gpus all --shm-size=8g \
     -v $(pwd):/workspace \
@@ -112,6 +121,7 @@ python make_finetune_lmdb_v2.py
 bash run_finetune_v2.sh
 bash run_infer.sh
 python compute_metrics_v2.py
+```
 
 ## References
 
